@@ -1,3 +1,13 @@
+# Game 4+
+
+### Improvements
+- Add moves to history table when alpha-beta pruning occurs
+- Changed max limit to be only time-limited rather than depth-limited 
+- Added predictive time limit
+
+### Bonuses
+- Transposition Table
+
 #################################
 #	Coding Standards	#
 #################################

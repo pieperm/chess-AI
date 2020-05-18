@@ -1,3 +1,13 @@
+# Game 4+
+
+### Improvements
+- Add moves to history table when alpha-beta pruning occurs
+- Changed max limit to be only time-limited rather than depth-limited 
+- Added predictive time limit
+
+### Bonuses
+- Transposition Table
+
 # Java Joueur Client
 
 This is the root of your AI. Stay out of the `joueur/` folder, it does most of the heavy lifting to play on our game servers. Your AI, and the game objects it manipulates are all in `games/game_name/`, with your very own AI living in `games/game_name/AI.java` for you to make smarter.

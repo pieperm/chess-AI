@@ -34,6 +34,7 @@ public class AI extends BaseAI {
     // you can add additional fields here for your AI to use
     public ChessBoard chessBoard;
     public HistoryTable historyTable;
+    public TranspositionTable transpositionTable;
     // <<-- /Creer-Merge: fields -->>
 
 
@@ -56,6 +57,7 @@ public class AI extends BaseAI {
         super.start();
         chessBoard = new ChessBoard(game.fen);
         historyTable = new HistoryTable();
+        transpositionTable = new TranspositionTable();
         // <<-- /Creer-Merge: start -->>
     }
 
@@ -107,7 +109,7 @@ public class AI extends BaseAI {
         chessBoard.updateAttackedTiles(currentPlayer);
 
         // use minimax with alpha-beta pruning, quiescent search, and history table to determine the best move
-        ChessSolver chessSolver = new QuiescentSolver(chessBoard, currentPlayer, player.timeRemaining, historyTable);
+        ChessSolver chessSolver = new QuiescentSolver(chessBoard, currentPlayer, player.timeRemaining, historyTable, transpositionTable);
         String chosenMove = chessSolver.computeBestMove();
         System.out.println(currentPlayer + "'s move: " + chosenMove + "\n");  // print the move
 

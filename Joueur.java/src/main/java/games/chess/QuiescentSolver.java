@@ -15,7 +15,8 @@ public class QuiescentSolver extends ChessSolver implements Heuristic {
 
     private double timeRemaining;  // the total time left for the player until the end of the game
     private double startTime;  // time at which the player's turn begins
-    private HistoryTable historyTable;
+    private HistoryTable historyTable;  // history table storing effective actions
+    private TranspositionTable transpositionTable;  // transposition table storing information about previously seen states
 
     /**
      * Constructor for QuiescentSolver
@@ -24,10 +25,11 @@ public class QuiescentSolver extends ChessSolver implements Heuristic {
      * @param timeRemaining the total time left for the player until the end of the game
      * @param historyTable reference to the player's history table, developed throughout the game
      */
-    public QuiescentSolver(ChessBoard chessBoard, Color currentPlayer, double timeRemaining, HistoryTable historyTable) {
+    public QuiescentSolver(ChessBoard chessBoard, Color currentPlayer, double timeRemaining, HistoryTable historyTable, TranspositionTable transpositionTable) {
         super(chessBoard, currentPlayer);
         this.timeRemaining = timeRemaining;
         this.historyTable = historyTable;
+        this.transpositionTable = transpositionTable;
     }
 
     /**
@@ -39,15 +41,13 @@ public class QuiescentSolver extends ChessSolver implements Heuristic {
         startTime = System.nanoTime();
         double allocatedTime = allocatedTurnTime();
         double timeLimit = startTime + allocatedTime;
-        System.out.println(allocatedTime);
 
         ArrayList<String> possibleMoves = chessBoard.findAllMoves(currentPlayer);
         String action = quiescentSearch(chessBoard, possibleMoves, 0, timeLimit);
         double time1 = System.nanoTime();
 
         String moveFromHistory = findMoveFromHistory(possibleMoves);
-        if(moveFromHistory != null) {
-            System.out.println("Used history move");
+        if(moveFromHistory != null) {  // see if we can reuse an effective previous move
             return moveFromHistory;
         }
 
@@ -59,14 +59,12 @@ public class QuiescentSolver extends ChessSolver implements Heuristic {
 
             String searchResult = quiescentSearch(chessBoard, possibleMoves, depth, allocatedTime);
             double time2 = System.nanoTime();
-            double timeRatio = (time2 - time1) / (time1 - startTime);
-            double timePrediction = (time2 - time1) * timeRatio;
-            startTime = time1;
+            double timeRatio = (time2 - time1) / (time1 - startTime);  // compute ratio of this computation's time to previous time
+            double timePrediction = (time2 - time1) * timeRatio;  // use ratio to predict how long the next computation will take
+            startTime = time1;  // set both timers forward an interval
             time1 = time2;
-            System.out.println("Time limit: " + (time2 + timePrediction) + "/" + timeLimit);
-            if(time2 + timePrediction > timeLimit) {
-                System.out.println("TIMEOUT!");
-                action = searchResult;
+            if(time2 + timePrediction > timeLimit) {  // determine whether the next level will fit within time constraint
+                action = searchResult;  // return the current result if it will take too long
                 break;
             }
         }
@@ -127,6 +125,17 @@ public class QuiescentSolver extends ChessSolver implements Heuristic {
             return null;  // null signifies that a timeout occurred
         }
 
+        String priorityMove = null;
+        String boardState = chessBoard.toString();
+        if(transpositionTable.hasEntry(boardState)) {  // if this board state is encountered again
+            Integer tableValue = transpositionTable.getValue(boardState);
+            if(transpositionTable.getDepth(boardState) >= depth) {  // and the value of the table is higher
+                return tableValue;  // then this value is as good as or better than the value at this depth
+            } else {  // re-evaluate this state, trying the stored "best move" first
+                priorityMove = transpositionTable.getBestMove(boardState);
+            }
+        }
+
         ChessBoard clonedBoard = new ChessBoard(chessBoard);
         if(cutoff(chessBoard, depth, depthLimit)) {
             historyTable.insertOrIncrement(action, (int)Math.pow(2, depth));
@@ -135,6 +144,17 @@ public class QuiescentSolver extends ChessSolver implements Heuristic {
 
         int value = -INFINITY;
         ArrayList<String> allMoves = clonedBoard.findAllMoves(currentPlayer);
+
+        if(priorityMove != null) {
+            for(int i = 0; i < allMoves.size(); i++) {  // check if priority move is valid
+                if(priorityMove.equals(allMoves.get(i))) {  // if this move is in the list
+                    allMoves.remove(i);
+                    allMoves.add(0, priorityMove);  // move it to front of list to be evaluated first
+                    break;
+                }
+            }
+        }
+
         for(String move : allMoves) {
             try {
                 Integer min = minValue(result(clonedBoard, move), depth + 1, depthLimit, alpha, beta, allocatedTime, move);
@@ -144,6 +164,9 @@ public class QuiescentSolver extends ChessSolver implements Heuristic {
                 value = Math.max(value, min);
                 if (value >= beta) {
                     historyTable.insertOrIncrement(action, (int)Math.pow(2, depth));
+                    if(priorityMove != null) {  // store value for beta cutoff in TT
+                        transpositionTable.putEntry(boardState, depth, value, action);
+                    }
                     return value;  // if value exceeds the beta threshold, cut this branch
                 }
                 alpha = Math.max(alpha, value);  // set a new threshold for alpha
@@ -172,6 +195,16 @@ public class QuiescentSolver extends ChessSolver implements Heuristic {
             return null;  // null signifies that a timeout occurred
         }
 
+        String priorityMove = null;
+        String boardState = chessBoard.toString();
+        if(transpositionTable.hasEntry(boardState)) {  // if this board state is encountered again
+            if(transpositionTable.getDepth(boardState) >= depth) {  // and the value of the table is higher
+                return transpositionTable.getValue(boardState);  // then this value is as good as or better than the value at this depth
+            } else {  // re-evaluate this state, trying the stored "best move" first
+                priorityMove = transpositionTable.getBestMove(boardState);
+            }
+        }
+
         ChessBoard clonedBoard = new ChessBoard(chessBoard);
         if(cutoff(chessBoard, depth, depthLimit)) {
             return h(chessBoard);
@@ -179,6 +212,17 @@ public class QuiescentSolver extends ChessSolver implements Heuristic {
 
         int value = INFINITY;
         ArrayList<String> allMoves = clonedBoard.findAllMoves(currentPlayer);
+
+        if(priorityMove != null) {
+            for(int i = 0; i < allMoves.size(); i++) {  // check if priority move is valid
+                if(priorityMove.equals(allMoves.get(i))) {  // if this move is in the list
+                    allMoves.remove(i);
+                    allMoves.add(0, priorityMove);  // move it to front of list to be evaluated first
+                    break;
+                }
+            }
+        }
+
         for (String move : allMoves) {
             try {
                 Integer max = maxValue(result(clonedBoard, move), depth + 1, depthLimit, alpha, beta, allocatedTime, move);
@@ -188,6 +232,9 @@ public class QuiescentSolver extends ChessSolver implements Heuristic {
                 value = Math.min(value, max);
                 if (value <= alpha) {
                     historyTable.insertOrIncrement(action, (int)Math.pow(2, depth));
+                    if(priorityMove != null) {  // store value for alpha cutoff in TT
+                        transpositionTable.putEntry(boardState, depth, value, action);
+                    }
                     return value;  // if the value is below the alpha threshold, cut this branch
                 }
                 beta = Math.min(beta, value);  // set a new threshold for beta
@@ -283,8 +330,8 @@ public class QuiescentSolver extends ChessSolver implements Heuristic {
     public String findMoveFromHistory(ArrayList<String> possibleMoves) {
         Integer maxScore = 0;
         String maxMove = null;
-        for(String move : possibleMoves) {
-            if(historyTable.containsAction(move) && historyTable.getScore(move) > maxScore) {
+        for (String move : possibleMoves) {
+            if (historyTable.containsAction(move) && historyTable.getScore(move) > maxScore) {
                 maxScore = historyTable.getScore(move);
                 maxMove = move;
             }

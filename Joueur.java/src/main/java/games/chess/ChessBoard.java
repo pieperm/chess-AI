@@ -592,4 +592,24 @@ public class ChessBoard {
         set(row, col, newPiece);  // update the board with the promoted piece
     }
 
+    /**
+     * Overridden method to convert a ChessBoard into a String
+     * @return string representing piece color, positions, and empty tiles
+     */
+    @Override
+    public String toString() {
+        StringBuilder board = new StringBuilder();
+        for(int row = 8; row >= 1; row--) {
+            for(char col = 'a'; col <= 'h'; col++) {
+                if(isEmpty(row, col)) {
+                    board.append(" ");  // spaces represent empty tiles
+                } else {
+                    char pieceSymbol = this.at(row, col).pieceSymbol;
+                    board.append(pieceSymbol);
+                }
+            }
+            board.append("/");  // separator between rows
+        }
+        return board.toString();
+    }
 }

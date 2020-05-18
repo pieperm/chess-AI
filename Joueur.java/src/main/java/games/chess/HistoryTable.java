@@ -2,6 +2,9 @@ package games.chess;
 
 import java.util.*;
 
+/**
+ * History table that tracks the score for effective actions
+ */
 public class HistoryTable {
 
     LinkedHashMap<String, Integer> table;  // maps actions --> scores

@@ -3,6 +3,9 @@ package games.chess;
 import java.util.ArrayList;
 import java.util.Random;
 
+/**
+ * ChessSolver that randomly selects a valid move
+ */
 public class RandomSolver extends ChessSolver {
 
     /**

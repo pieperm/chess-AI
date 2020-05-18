@@ -32,6 +32,8 @@ public class AI extends BaseAI {
 
     // <<-- Creer-Merge: fields -->> - Code you add between this comment and the end comment will be preserved between Creer re-runs.
     // you can add additional fields here for your AI to use
+    public ChessBoard chessBoard;
+    public HistoryTable historyTable;
     // <<-- /Creer-Merge: fields -->>
 
 
@@ -41,7 +43,7 @@ public class AI extends BaseAI {
      */
     public String getName() {
         // <<-- Creer-Merge: get-name -->> - Code you add between this comment and the end comment will be preserved between Creer re-runs.
-        return "Chess Java Player"; // REPLACE THIS WITH YOUR TEAM NAME!
+        return "mepww2"; // REPLACE THIS WITH YOUR TEAM NAME!
         // <<-- /Creer-Merge: get-name -->>
     }
 
@@ -52,6 +54,8 @@ public class AI extends BaseAI {
     public void start() {
         // <<-- Creer-Merge: start -->> - Code you add between this comment and the end comment will be preserved between Creer re-runs.
         super.start();
+        chessBoard = new ChessBoard(game.fen);
+        historyTable = new HistoryTable();
         // <<-- /Creer-Merge: start -->>
     }
 
@@ -87,7 +91,31 @@ public class AI extends BaseAI {
         // <<-- Creer-Merge: makeMove -->> - Code you add between this comment and the end comment will be preserved between Creer re-runs.
         game.print();
         // Put your game logic here for makeMove
-        return "";
+        Color currentPlayer = player.color.equals("white") ? Color.WHITE : Color.BLACK;
+
+        if(!game.history.isEmpty()) {  // update board state from opponent's move
+            String latestMove = game.history.get(game.history.size() - 1);  // get opponent's last move
+            String originalTile = latestMove.substring(0, 2);
+            ChessPiece opponentPiece = chessBoard.at(originalTile);
+            if(opponentPiece != null) {
+                chessBoard.detectCaptures(latestMove);
+                chessBoard.movePiece(latestMove);
+            }
+        }
+
+        // mark tiles that are under attack by the opponent
+        chessBoard.updateAttackedTiles(currentPlayer);
+
+        // use minimax with alpha-beta pruning, quiescent search, and history table to determine the best move
+        ChessSolver chessSolver = new QuiescentSolver(chessBoard, currentPlayer, player.timeRemaining, historyTable);
+        String chosenMove = chessSolver.computeBestMove();
+        System.out.println(currentPlayer + "'s move: " + chosenMove + "\n");  // print the move
+
+        // update the internal board state
+        chessBoard.detectCaptures(chosenMove);
+        chessBoard.movePiece(chosenMove);
+
+        return chosenMove;
         // <<-- /Creer-Merge: makeMove -->>
     }
 
